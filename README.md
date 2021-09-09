@@ -75,6 +75,9 @@ Such a radiation transposition model can be used for example to study the effect
 of the azimuth and the slope of a solar panel:
 
 ![GHI transposition for a range of slopes](doc/img/GHI_2012-137_trans_a0_slope_range.png)
+![GHI transposition for a range of slopes animation](doc/img/GHI_2012-137_trans_a0_slope_range.mp4)
 ![GHI transposition for a range of azimuths](doc/img/GHI_2012-137_trans_s40_azim_range.png)
+![GHI transposition for a range of azimuths animation](doc/img/GHI_2012-137_trans_s40_azim_range.mp4)
+
 
 For a more detailed introduction, see [doc/Usage.ipynb](doc/Usage.ipynb).

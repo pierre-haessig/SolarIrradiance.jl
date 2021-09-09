@@ -177,3 +177,97 @@ ax.legend(ncol=2, loc="upper center")
 fig.tight_layout()
 fname = "GHI_$(year)-$(n)_trans_a$(azimuth)_slope_range.png"
 fig.savefig(fname, dpi=300)
+
+## Animation of a range of azimuths ##
+
+slope = 40 #°
+azi_range = -90:3:90 # → 2s @ 30 fps
+
+lineG_data = zeros(2, length(tc_range))
+lineG_data[1,:] = tc_range
+
+function update_Gplane_azi(i, lineG)
+    azimuth = azi_range[i]
+    # Compute Gplane
+    for (k, tck) in enumerate(tc_range)
+        GHIk = GHI_day[k]
+        lineG_data[2,k] = global_radiation_tilt(GHIk, n, tck, dt, lat, lon, slope, azimuth, albedo)
+    end
+    ax.set_title("Irradiance transposition on a plane\n tilted by $(slope)°, azimuth $(azimuth)°")
+    # Update plot
+    lineG.set_data(lineG_data)
+    return (lineG, )
+end
+
+# Figure creation with null Gplane
+fig, ax = subplots(figsize=(5,3.5))
+ax.plot(tc_range, GHI_day, "o-", label="horizontal (data)")
+lineG = ax.plot(tc_range, lineG_data[2,:], "D-", label="tilted (estimate)")[1]
+ax.grid(true)
+ax.set(
+    title="Irradiance transposition on a plane\n tilted by $(slope)°, azimuth XX°",
+    xlabel="time (UTC hours)",
+    ylabel="Irradiance (W/m²)",
+    ylim=(0,1300)
+)
+ax.legend(ncol=2, loc="upper center")
+fig.tight_layout()
+
+# Creating the Animation object
+azim_ani = matplotlib.animation.FuncAnimation(
+    fig, update_Gplane_azi, 1:length(azi_range), fargs=(lineG,), interval=33.33)
+
+fname = "GHI_$(year)-$(n)_trans_s$(slope)_azim_range.mp4"
+azim_ani.save(fname, dpi=216, # 5"*216 = 1080 px
+    metadata=Dict(
+        "title" => "GHI transposition on a plane tilted by $(slope)°, for a range of azimuths",
+        "artist" => "Pierre Haessig",
+        "date" => "2021")
+)
+
+## Animation of a range of slopes ##
+
+azimuth = 0 #°
+slo_range = 0:1.5:90 # → 2s @ 30 fps
+
+lineG_data = zeros(2, length(tc_range))
+lineG_data[1,:] = tc_range
+
+function update_Gplane_slo(i, lineG)
+    slope = slo_range[i]
+    # Compute Gplane
+    for (k, tck) in enumerate(tc_range)
+        GHIk = GHI_day[k]
+        lineG_data[2,k] = global_radiation_tilt(GHIk, n, tck, dt, lat, lon, slope, azimuth, albedo)
+    end
+    ax.set_title("Irradiance transposition on a plane with azimuth $(azimuth)°,\n tilted by $(slope)°")
+    # Update plot
+    lineG.set_data(lineG_data)
+    return (lineG, )
+end
+
+# Figure creation with null Gplane
+fig, ax = subplots(figsize=(5,3.5))
+ax.plot(tc_range, GHI_day, "o-", label="horizontal (data)")
+lineG = ax.plot(tc_range, lineG_data[2,:], "D-", label="tilted (estimate)")[1]
+ax.grid(true)
+ax.set(
+    title="Irradiance transposition on a plane with azimuth $(azimuth)°,\n tilted by XX°",
+    xlabel="time (UTC hours)",
+    ylabel="Irradiance (W/m²)",
+    ylim=(0,1300)
+)
+ax.legend(ncol=2, loc="upper center")
+fig.tight_layout()
+
+# Creating the Animation object
+azim_slo = matplotlib.animation.FuncAnimation(
+    fig, update_Gplane_slo, 1:length(slo_range), fargs=(lineG,), interval=33.33)
+
+fname = "GHI_$(year)-$(n)_trans_a$(azimuth)_slope_range.mp4"
+azim_slo.save(fname, dpi=216, # 5"*216 = 1080 px
+    metadata=Dict(
+        "title" => "GHI transposition on a plane with azimuth $(azimuth)°, for a range of slopes",
+        "artist" => "Pierre Haessig",
+        "date" => "2021")
+)
