@@ -72,12 +72,20 @@ The effect of the west orientation is visible: the panel receives more irradianc
 ![](doc/img/GHI_2012-137_trans_s40_a90.png)
 
 Such a radiation transposition model can be used for example to study the effect
-of the azimuth and the slope of a solar panel:
+of the azimuth and the slope of a solar panel.
 
+Tilting slightly the panel increase cumulated irradiance, but a vertical panel receives less:
 ![GHI transposition for a range of slopes](doc/img/GHI_2012-137_trans_a0_slope_range.png)
-![GHI transposition for a range of slopes animation](doc/img/GHI_2012-137_trans_a0_slope_range.mp4)
-![GHI transposition for a range of azimuths](doc/img/GHI_2012-137_trans_s40_azim_range.png)
-![GHI transposition for a range of azimuths animation](doc/img/GHI_2012-137_trans_s40_azim_range.mp4)
+![GHI transposition for a range of slopes: horizontal to vertical animation](doc/img/GHI_2012-137_trans_a0_slope_range.mp4)
+
+East to west azimuth animation:
+![GHI transposition for a range of azimuths: east to west animation](doc/img/GHI_2012-137_trans_s40_azim_range2.gif)
 
 
 For a more detailed introduction, see [doc/Usage.ipynb](doc/Usage.ipynb).
+
+## TODOs
+
+- add ability to input to `global_radiation_tilt` the split beam & diffuse irradiance components instead of the GHI 
+- implement Muneer 1990 transposition method (e.g. used by PVGIS)
+- fix case when `D<=0` in `day_bounds(n, slope, azimuth, lat)` (e.g. north-oriented panel)

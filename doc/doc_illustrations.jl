@@ -217,13 +217,136 @@ fig.tight_layout()
 azim_ani = matplotlib.animation.FuncAnimation(
     fig, update_Gplane_azi, 1:length(azi_range), fargs=(lineG,), interval=33.33)
 
+fname = "GHI_$(year)-$(n)_trans_s$(slope)_azim_range.gif"
+writer = matplotlib.animation.PillowWriter(fps=30)
 fname = "GHI_$(year)-$(n)_trans_s$(slope)_azim_range.mp4"
-azim_ani.save(fname, dpi=216, # 5"*216 = 1080 px
-    metadata=Dict(
+writer = matplotlib.animation.FFMpegWriter(fps=30, metadata=Dict(
         "title" => "GHI transposition on a plane tilted by $(slope)°, for a range of azimuths",
         "artist" => "Pierre Haessig",
-        "date" => "2021")
+        "date" => "2021"))
+azim_ani.save(fname, dpi=216, writer=writer) # 5"*216 = 1080 px
+
+## Show azimuth of the plane
+
+fig = plt.figure()
+ax = fig.add_subplot(1,1,1)
+
+function aziplot_setup(ax, plane_color = "tab:red", ra = 1.3)
+    # N,E,S,W arrow
+    NESW_color = "gray"
+    ax.arrow(0, -ra , 0, 2ra, head_width=0.1, length_includes_head=true, color=NESW_color)
+    ax.arrow(-ra , 0, 2ra, 0, head_width=0, color=NESW_color)
+    ax.text(0, 1.1ra, "S\n0°", ha="center", va="bottom")
+    ax.text(1.1ra, 0, "90° W", ha="left", va="center")
+    ax.text(0, -1.1ra, "180°\nN", ha="center", va="top")
+    ax.text(-1.1ra, 0, "E −90°", ha="right", va="center")
+
+    # Plane orientation plot
+    azimuth = 0 #°
+    cosγ = cos(deg2rad(azimuth))
+    sinγ = sin(deg2rad(azimuth))
+    # plane
+    plane_line = ax.plot([-cosγ, cosγ], [sinγ, -sinγ], color=plane_color, lw=3)[1]
+    # normal arrow
+    plane_arrow = ax.arrow(0, 0, sinγ, cosγ, head_width=0.1, length_includes_head=true, color=plane_color)
+    plane_arrow_xy0 = plane_arrow.get_xy()
+
+    # Axes setup:
+    lim = 1.5ra
+    ax.set(
+        xlim=(-lim, lim),
+        ylim=(-lim, lim),
+        aspect = "equal"
+    )
+    ax.axis("off")
+
+    return plane_arrow, plane_line, plane_arrow_xy0
+end
+
+"move plane to azimuth[i]"
+function aziplot_update(i, plane_arrow, plane_line, plane_arrow_xy0)
+    azimuth = azi_range[i]
+    cosγ = cos(deg2rad(azimuth))
+    sinγ = sin(deg2rad(azimuth))
+    # plane
+    plane_line.set_data([-cosγ, cosγ], [sinγ, -sinγ])
+    # normal arrow
+    rot = matplotlib.transforms.Affine2D().rotate_deg(-azimuth)
+    xyr = rot.transform(plane_arrow_xy0)
+    plane_arrow.set_xy(xyr)
+    return plane_arrow, plane_line
+end
+
+plane_arrow, plane_line, plane_arrow_xy0 = aziplot_setup(ax)
+aziplot_update(2, plane_arrow, plane_line, plane_arrow_xy0)
+
+
+## Animation of a range of azimuth + azi_plot ##
+
+slope = 40 #°
+fps = 30
+azi_range = -90:3:90 # → 2s @ 30 fps
+print("azimuth anim $(azi_range[1])° to $(azi_range[end])°: $(length(azi_range)/fps)s @ $(fps) fps\n")
+
+lineG_data = zeros(2, length(tc_range))
+lineG_data[1,:] = tc_range
+
+function update_Gplane_azi(i, lineG, ax)
+    azimuth = azi_range[i]
+    # Compute Gplane
+    for (k, tck) in enumerate(tc_range)
+        GHIk = GHI_day[k]
+        lineG_data[2,k] = global_radiation_tilt(GHIk, n, tck, dt, lat, lon, slope, azimuth, albedo)
+    end
+    ax.set_title("Irradiance transposition on a plane\n tilted by $(slope)°, azimuth $(azimuth)°")
+    # Update plot
+    lineG.set_data(lineG_data)
+    return (lineG, )
+end
+
+function update_azianim(i, lineG, axG, plane_arrow, plane_line, plane_arrow_xy0)
+    lineG = update_Gplane_azi(i, lineG, axG)[1]
+    plane_arrow, plane_line = aziplot_update(i, plane_arrow, plane_line, plane_arrow_xy0)
+    return (lineG, plane_arrow, plane_line)
+end
+
+# Figure creation with null Gplane
+fig = figure(figsize=(9, 4.5))
+
+gs = fig.add_gridspec(1, 2, width_ratios=[3, 1])
+ax1 = fig.add_subplot(gs[1])
+ax2 = fig.add_subplot(gs[2])
+
+plane_arrow, plane_line = aziplot_setup(ax2)
+
+# GHI plot setup
+ax1.plot(tc_range, GHI_day, "o-", label="horizontal (data)")
+lineG = ax1.plot(tc_range, lineG_data[2,:], "D-", label="tilted (estimate)")[1]
+ax1.grid(true)
+ax1.set(
+    title="Irradiance transposition on a plane\n tilted by $(slope)°, azimuth XX°",
+    xlabel="time (UTC hours)",
+    ylabel="Irradiance (W/m²)",
+    ylim=(0,1300)
 )
+ax1.legend(ncol=2, loc="upper center")
+fig.tight_layout()
+
+# Creating the Animation object
+azim_ani = matplotlib.animation.FuncAnimation(
+    fig, update_azianim, 1:length(azi_range),
+    fargs=(lineG, ax1, plane_arrow, plane_line, plane_arrow_xy0),
+    interval=33.33)
+
+# fname = "GHI_$(year)-$(n)_trans_s$(slope)_azim_range2.gif"
+# writer = matplotlib.animation.PillowWriter(fps=30)
+fname = "GHI_$(year)-$(n)_trans_s$(slope)_azim_range2.mp4"
+writer = matplotlib.animation.FFMpegWriter(fps=30, metadata=Dict(
+        "title" => "GHI transposition on a plane tilted by $(slope)°, for a range of azimuths",
+        "artist" => "Pierre Haessig",
+        "date" => "2021"))
+azim_ani.save(fname, dpi=240, writer=writer) # 4.5"*240 = 1080 px
+
 
 ## Animation of a range of slopes ##
 
