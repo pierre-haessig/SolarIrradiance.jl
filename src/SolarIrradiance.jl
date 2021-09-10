@@ -142,9 +142,15 @@ function day_bounds(n, slope, azimuth, lat)
 
     D = C^2+B^2-A^2
     E = A-B
-
-    ωu = 2*atan((-C+sqrt(D))/E)
-    ωd = 2*atan((-C-sqrt(D))/E)
+    if D >= 0
+        ωu = 2*atan((-C+sqrt(D))/E)
+        ωd = 2*atan((-C-sqrt(D))/E)
+    else
+        # quick fix to  avoid sqrt(negative number) error,
+        # but there may be a more physical way to detect this situation
+        ωu = 0.0
+        ωd = 0.0
+    end
     
     return ωu, ωd
 end
