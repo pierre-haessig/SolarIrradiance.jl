@@ -4,7 +4,9 @@
 
 module SolarIrradiance
 
-export dayofyear, declination, EoT, hour_angle, day_bounds
+include("helpers.jl") # unexported helper functions
+
+export dayofyear, declination, EoT, hour_angle, day_bounds, day_bounds2
 export cosθavg, cosθZavg, Rb, global_radiation_tilt
 
 include("GHIProcess.jl")
@@ -155,6 +157,52 @@ function day_bounds(n, slope, azimuth, lat)
     return ωu, ωd
 end
 
+
+"""
+    day_bounds2(n, slope, azimuth, lat)
+
+Compute the hour angle bounds when the sun is above a panel during day `n`.
+
+Panel has a `slope` (in [0, 90°]) and `azimuth` (in [-90°, 90°])
+and is located at latitude `lat` (°).
+
+Return `ωu`, `ωd` (in rad) which are respectively the hour angles of 
+sunrise and sunset *over the panel*.
+When `slope` is 0, this corresponds to regulat sunrise and sunset (over the ground).
+and there is a dedicated method for this, see `day_bounds(n, lat)`.
+
+Mathematically, with θ the angle of incidence of the Sun on the panel,
+this means that cosθ=0 at hour angle `ωu` and `ωd` and cosθ ≥ 0 in between.
+"""
+function day_bounds2(n, slope, azimuth, lat)
+    beta=deg2rad(slope)
+    gamma=deg2rad(azimuth)
+    phi=deg2rad(lat)
+    delta=declination(n)
+
+    tanδ=tan(delta)
+    sinϕ=sin(phi) 
+    cosϕ=cos(phi)
+    cosβ=cos(beta)
+    sinβ=sin(beta)
+    cosγ=cos(gamma)
+    sinγ=sin(gamma)
+    
+    # a = cosδ*(cosϕ*cosβ + 
+    #           sinϕ*sinβ*cosγ)
+    # b = cosδ*(     sinβ*sinγ)
+    # c = sinδ*(-sinϕ*cosβ + cosϕ*sinβ*cosγ)
+    # Simplified:
+    a =          cosϕ*cosβ +
+                 sinϕ*sinβ*cosγ
+    b =               sinβ*sinγ
+    c = tanδ * (-sinϕ*cosβ + cosϕ*sinβ*cosγ)
+
+    ωu, ωd = solve_cossin(a, b, c)
+    
+    return ωu, ωd
+end
+
 """
     day_bounds(n, lat)
 
@@ -179,13 +227,51 @@ end
 
 
 """
-    cosθavg(n, tcini, dt, slope, azimuth, lat, lon)
+    cosθ(n, tc, slope, azimuth, lat, lon)
 
 Cosine of θ, the angle of incidence of the sun on a tilted panel.
 
 Panel has orientation (`slope`, `azimuth` °) and is located at (`lon`, `lat` °).
+Value is computed on day `n` at civil hour `tc`.
+
+See also: [`cosθavg`](@ref) for an averaged value.
+"""
+function cosθ(n, tc, slope, azimuth, lat, lon)
+    beta=deg2rad(slope)
+    gamma=deg2rad(azimuth)
+    phi=deg2rad(lat)
+    ω=hour_angle(n, tc, lon)
+    δ = declination(n)
+
+    cosϕ = cos(phi)
+    sinϕ = sin(phi)
+    cosβ = cos(beta)
+    sinβ = sin(beta)
+    cosγ = cos(gamma)
+    sinγ = sin(gamma)
+
+    c = sin(δ)*(sinϕ*cosβ -
+                cosϕ*sinβ*cosγ
+               ) +
+        cos(δ)*(
+                (cosϕ*cosβ +
+                 sinϕ*sinβ*cosγ)*cos(ω) +
+                 sinβ*     sinγ* sin(ω)
+               )
+    return c
+end
+
+
+"""
+    cosθavg(n, tcini, dt, slope, azimuth, lat, lon)
+
+Averaged cosine of θ, the angle of incidence of the sun on a tilted panel.
+
+Panel has orientation (`slope`, `azimuth` °) and is located at (`lon`, `lat` °).
 Value is computed on day `n`, averaged on a time interval `dt`
 starting at civil hour `tcini`.
+
+More precisely, it is the average of the positive part of cosθ, i.e. max(cosθ, 0)
 
 See also: [`cosθZavg`](@ref) for the incidence on the _ground_.
 """
@@ -197,24 +283,24 @@ function cosθavg(n, tcini, dt, slope, azimuth, lat, lon)
     ω1=hour_angle(n, tcini, lon)
     ω2=hour_angle(n, tcini+dt, lon)
     
-    ωup, ωdown = day_bounds(n, slope, azimuth, lat)
+    # ωup, ωdown = day_bounds(n, slope, azimuth, lat)
     
-    if ω1<ωup && ω2<ωup
-        return 0.0
-    elseif ω1>ωdown && ω2>ωdown
-        return 0.0
-    elseif ω1<ωup && ω2>ωup
-        ω1 = ωup
-        tdebut = time_hour_angle(n, ωup, lon)
-        tfin = tcini+dt
-        dt = tfin-tdebut # TODO: check that the change of `dt` is correct
-    elseif ω1<ωdown && ω2>ωdown
-        ω2 = ωdown
-        tdebut = tcini
-        tfin = time_hour_angle(n, ωdown, lon)
-        dt = tfin-tdebut # TODO: check that the change of `dt` is correct
-    end
-    
+    # if ω1<ωup && ω2<ωup
+    #     return 0.0
+    # elseif ω1>ωdown && ω2>ωdown
+    #     return 0.0
+    # elseif ω1<ωup && ω2>ωup
+    #     ω1 = ωup
+    #     tdebut = time_hour_angle(n, ωup, lon)
+    #     tfin = tcini+dt
+    #     dt = tfin-tdebut # TODO: check that the change of `dt` is correct
+    # elseif ω1<ωdown && ω2>ωdown
+    #     ω2 = ωdown
+    #     tdebut = tcini
+    #     tfin = time_hour_angle(n, ωdown, lon)
+    #     dt = tfin-tdebut # TODO: check that the change of `dt` is correct
+    # end
+
     delta = declination(n)
 
     sinδ = sin(delta)
