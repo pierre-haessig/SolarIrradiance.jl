@@ -25,11 +25,11 @@ otherwise the PVGIS API refuses to generate the CSV containing the data
 
 See also: [`GHI_read`](@ref) to load the data.
 """
-function GHI_download(year, lat, lon, angle, aspect; basename="GHI")
-    baseurl = "https://re.jrc.ec.europa.eu/api/seriescalc?"
-    url = string(baseurl, "lat=",lat, "&lon=",lon, "&angle=", angle, "&aspect=", aspect,
-                 "&startyear=", year, "&endyear=", year,
-                 "&outputformat=csv&browser=1")
+function GHI_download(year, lat, lon, angle, aspect; basename="GHI" , version = 1)
+     url = string("https://re.jrc.ec.europa.eu/api/v5_",version,"/seriescalc?",
+        "lat=",lat, "&lon=",lon, "&angle=", angle, "&aspect=", aspect,
+        "&startyear=", year, "&endyear=", year,
+        "&outputformat=csv&browser=1")
     fname = string(basename, "_", lat, "_", lon, "_SA_", angle, "deg_", aspect, "aspect_",
                    year, "_", year, ".csv")
     
