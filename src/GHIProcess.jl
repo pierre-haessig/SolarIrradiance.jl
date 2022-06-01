@@ -30,7 +30,7 @@ function GHI_download(year, lat, lon, angle, aspect; basename="GHI")
     url = string(baseurl, "lat=",lat, "&lon=",lon, "&angle=", angle, "&aspect=", aspect,
                  "&startyear=", year, "&endyear=", year,
                  "&outputformat=csv&browser=1")
-    fname = string(basename, "_", lat, "_", lon, "_SA_", angle, "deg_", aspect, "deg_",
+    fname = string(basename, "_", lat, "_", lon, "_SA_", angle, "deg_", aspect, "aspect_",
                    year, "_", year, ".csv")
     
     io = open(fname, "w")
