@@ -23,20 +23,24 @@ Data is saved in a CSV file with the `basename` prefix (default: `"GHI"`).
 ⚠️ `lat`, `lon` must be expressed with maximum 3 significant digits,
 otherwise the PVGIS API refuses to generate the CSV containing the data
 
+With the update of PVGIS and the new version called "SARAH2", version specifie the 
+used version of PVGIS_SARAH (v5_1 or v5_2)
+
 See also: [`GHI_read`](@ref) to load the data.
 """
-function GHI_download(year, lat, lon, angle, aspect; basename="GHI" , version = 1)
-     url = string("https://re.jrc.ec.europa.eu/api/v5_",version,"/seriescalc?",
+function GHI_download(year, lat, lon, angle, aspect; basename="GHI" , version = :v5_2)
+     url = string("https://re.jrc.ec.europa.eu/api/",version,"/seriescalc?",
         "lat=",lat, "&lon=",lon, "&angle=", angle, "&aspect=", aspect,
         "&startyear=", year, "&endyear=", year,
         "&outputformat=csv&browser=1")
     fname = string(basename, "_", lat, "_", lon, "_SA_", angle, "deg_", aspect, "aspect_",
                    year, "_", year, ".csv")
-    
-    io = open(fname, "w")
-    r = HTTP.request("GET", url, response_stream=io)
-    close(io)
-    print("PVGIS GHI data downloaded and saved as $fname\n")
+    if (fname ∉ readdir()) #if the file is not in the main folder 
+        io = open(fname, "w")
+        r = HTTP.request("GET", url, response_stream=io)
+        close(io)
+        print("PVGIS GHI data downloaded and saved as $fname\n")
+    end
     return fname
 end
 
